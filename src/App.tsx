@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
-type Screen = "title" | "playing" | "cleared" | "failed";
+type Screen =
+  | "title"
+  | "playing"
+  | "failed"
+  | "glitch"
+  | "thanks";
+
 type Stage = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 type FakeCloseMark = {
@@ -43,56 +49,68 @@ type Stage5Tile = {
   isCorrect: boolean;
 };
 
-type Stage6Item = {
+type Stage7Option = {
   id: string;
   label: string;
-  isHuman: boolean;
+  isCorrect: boolean;
 };
 
-type Stage7Word = {
+type Stage8Ad = {
+  title: string;
+  body: string;
+  primaryLabel: string;
+  secondaryLabel?: string;
+};
+
+type GlitchPopup = {
   id: string;
-  text: string;
+  title: string;
+  body: string;
   top: string;
   left: string;
-  size: number;
-  rotate: number;
-  isCorrect: boolean;
-};
-
-type Stage8Button = {
-  id: string;
-  label: string;
-  isCorrect: boolean;
-};
-
-type Stage9Option = {
-  id: string;
-  label: string;
-  isCorrect: boolean;
+  width: string;
 };
 
 function App() {
   const [screen, setScreen] = useState<Screen>("title");
   const [currentStage, setCurrentStage] = useState<Stage>(1);
   const [timeLeft, setTimeLeft] = useState(60);
+
   const [selectedTileIds, setSelectedTileIds] = useState<string[]>([]);
   const [stage4Input, setStage4Input] = useState("");
   const [stage5Round, setStage5Round] = useState(1);
-  const [stage6Selected, setStage6Selected] = useState<string[]>([]);
-  const [stage7Clicks, setStage7Clicks] = useState<string[]>([]);
-  const [stage8Round, setStage8Round] = useState(1);
-  const [stage9Choice, setStage9Choice] = useState("");
+
+  const [stage6RealPosition, setStage6RealPosition] = useState({ top: 58, left: 58 });
+  const [stage6Flash, setStage6Flash] = useState(false);
+
+  const [stage7Selected, setStage7Selected] = useState<string[]>([]);
+  const [stage8Layer, setStage8Layer] = useState(0);
+  const [stage8Shake, setStage8Shake] = useState(false);
+  const [stage9Step, setStage9Step] = useState(0);
+
   const [stage10Checked, setStage10Checked] = useState(false);
+  const [stage10Error, setStage10Error] = useState("");
+
+  const [glitchPhase, setGlitchPhase] = useState(0);
+
+  const isMobile = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth <= 768;
+  }, []);
 
   const resetRunState = () => {
     setSelectedTileIds([]);
     setStage4Input("");
     setStage5Round(1);
-    setStage6Selected([]);
-    setStage7Clicks([]);
-    setStage8Round(1);
-    setStage9Choice("");
+    setStage6RealPosition({ top: 58, left: 58 });
+    setStage6Flash(false);
+    setStage7Selected([]);
+    setStage8Layer(0);
+    setStage8Shake(false);
+    setStage9Step(0);
     setStage10Checked(false);
+    setStage10Error("");
+    setGlitchPhase(0);
   };
 
   const stage2Marks = useMemo<FakeCloseMark[]>(() => {
@@ -196,59 +214,122 @@ function App() {
     }
   }, [stage5Round]);
 
-  const stage6Items = useMemo<Stage6Item[]>(() => {
+  const stage6FakeMarks = useMemo(() => {
     return [
-      { id: "s6-1", label: "私は信号待ちで青になる前から少し前に出る", isHuman: true },
-      { id: "s6-2", label: "私は利用規約を毎回熟読して感動する", isHuman: false },
-      { id: "s6-3", label: "私は動画広告の残り秒数を見つめる", isHuman: true },
-      { id: "s6-4", label: "私は常に最短経路でクリックし感情を持たない", isHuman: false },
-      { id: "s6-5", label: "私はパスワード再設定メールを3回待つ", isHuman: true },
-      { id: "s6-6", label: "私は全ポップアップを歓迎する", isHuman: false },
+      { id: "s6-f1", top: 16, left: 14, size: 18, opacity: 0.75 },
+      { id: "s6-f2", top: 22, left: 78, size: 16, opacity: 0.7 },
+      { id: "s6-f3", top: 34, left: 22, size: 18, opacity: 0.72 },
+      { id: "s6-f4", top: 38, left: 64, size: 17, opacity: 0.68 },
+      { id: "s6-f5", top: 52, left: 12, size: 19, opacity: 0.7 },
+      { id: "s6-f6", top: 56, left: 82, size: 16, opacity: 0.73 },
+      { id: "s6-f7", top: 68, left: 28, size: 18, opacity: 0.7 },
+      { id: "s6-f8", top: 74, left: 66, size: 17, opacity: 0.74 },
+      { id: "s6-f9", top: 44, left: 46, size: 16, opacity: 0.66 },
     ];
   }, []);
 
-  const stage7Words = useMemo<Stage7Word[]>(() => {
+  const stage7Options = useMemo<Stage7Option[]>(() => {
     return [
-      { id: "w1", text: "無料", top: "14%", left: "8%", size: 34, rotate: -10, isCorrect: false },
-      { id: "w2", text: "後で", top: "24%", left: "70%", size: 28, rotate: 8, isCorrect: false },
-      { id: "w3", text: "閉じる", top: "58%", left: "76%", size: 16, rotate: 0, isCorrect: true },
-      { id: "w4", text: "許可", top: "68%", left: "12%", size: 32, rotate: -8, isCorrect: false },
-      { id: "w5", text: "おすすめ", top: "18%", left: "40%", size: 22, rotate: -3, isCorrect: false },
-      { id: "w6", text: "skip", top: "46%", left: "16%", size: 20, rotate: 5, isCorrect: false },
-      { id: "w7", text: "×", top: "8%", left: "88%", size: 12, rotate: 0, isCorrect: true },
-      { id: "w8", text: "今すぐ登録", top: "42%", left: "50%", size: 24, rotate: -6, isCorrect: false },
+      { id: "q1", label: "利用規約を読まずに「同意する」を押す", isCorrect: true },
+      { id: "q2", label: "パスワードを正確に入力する", isCorrect: false },
+      { id: "q3", label: "「あと5分だけ」と言って二度寝する", isCorrect: true },
+      { id: "q4", label: "指示された手順を一字一句守る", isCorrect: false },
+      { id: "q5", label: "閉まるボタンを何度も連打する", isCorrect: true },
+      { id: "q6", label: "エラーが出ても冷静に原因を切り分ける", isCorrect: false },
+      { id: "q7", label: "広告の×を押したつもりで広告を開いてしまう", isCorrect: true },
+      { id: "q8", label: "与えられたルールを常に守る", isCorrect: false },
     ];
   }, []);
 
-  const stage8Buttons = useMemo<Stage8Button[]>(() => {
-    switch (stage8Round) {
-      case 1:
-        return [
-          { id: "a", label: "許可", isCorrect: false },
-          { id: "b", label: "今はしない", isCorrect: true },
-          { id: "c", label: "あとで通知", isCorrect: false },
-        ];
-      case 2:
-        return [
-          { id: "a", label: "ダウンロード", isCorrect: false },
-          { id: "b", label: "続行", isCorrect: false },
-          { id: "c", label: "スキップ", isCorrect: true },
-        ];
-      default:
-        return [
-          { id: "a", label: "無料で開始", isCorrect: false },
-          { id: "b", label: "広告を閉じる", isCorrect: true },
-          { id: "c", label: "会員登録", isCorrect: false },
-        ];
-    }
-  }, [stage8Round]);
-
-  const stage9Options = useMemo<Stage9Option[]>(() => {
+  const stage8Ads = useMemo<Stage8Ad[]>(() => {
     return [
-      { id: "opt-1", label: "7日前の認証方法で続行する", isCorrect: false },
-      { id: "opt-2", label: "私はたぶん人間なので続行する", isCorrect: false },
-      { id: "opt-3", label: "最も人間らしい選択肢を選ぶ", isCorrect: true },
-      { id: "opt-4", label: "すべての選択肢に同意して続行する", isCorrect: false },
+      {
+        title: "お得な情報をお見逃しなく",
+        body: "閉じたつもりでも、より良い広告体験のために次のご案内を表示します。",
+        primaryLabel: "閉じる",
+        secondaryLabel: "今はしない",
+      },
+      {
+        title: "さらに便利な認証はこちら",
+        body: "ワンクリックで登録できます。たぶん閉じるよりもこちらがおすすめです。",
+        primaryLabel: "スキップ",
+        secondaryLabel: "登録しない",
+      },
+      {
+        title: "まもなく広告を終了します",
+        body: "この広告は終了しかけています。念のため、もう一度だけ操作してください。",
+        primaryLabel: "続行せずに進む",
+        secondaryLabel: "後で閉じる",
+      },
+      {
+        title: "最後のご案内です",
+        body: "本当に最後かもしれません。人間らしい忍耐力が試されています。",
+        primaryLabel: "本当に閉じる",
+        secondaryLabel: "おすすめを見る",
+      },
+    ];
+  }, []);
+
+  const stage9Messages = useMemo(() => {
+    return [
+      { title: "あと一歩です", percent: 98, button: "次へ", sub: "認証はほぼ完了しています。" },
+      { title: "まもなく完了します", percent: 99, button: "続行", sub: "最終段階の確認中です。" },
+      { title: "もう少しで認証が終わります", percent: 99, button: "確認", sub: "安全性のために追加確認を行っています。" },
+      { title: "最終確認中です", percent: 99.1, button: "完了まで進む", sub: "人間らしさの最終判定をしています。" },
+      { title: "ほぼ完了しています", percent: 99.2, button: "次の確認へ", sub: "あと少しだけお待ちください。" },
+    ];
+  }, []);
+
+  const glitchPopups = useMemo<GlitchPopup[]>(() => {
+    return [
+      {
+        id: "g1",
+        title: "SYSTEM ERROR",
+        body: "Unexpected human behavior detected.",
+        top: "10%",
+        left: "8%",
+        width: "min(260px, 72vw)",
+      },
+      {
+        id: "g2",
+        title: "SECURITY ALERT",
+        body: "Excessive button mashing recorded.",
+        top: "18%",
+        left: "52%",
+        width: "min(250px, 68vw)",
+      },
+      {
+        id: "g3",
+        title: "UNKNOWN INPUT",
+        body: "Too much emotion in interaction pattern.",
+        top: "38%",
+        left: "14%",
+        width: "min(280px, 74vw)",
+      },
+      {
+        id: "g4",
+        title: "ACCESS WARNING",
+        body: "Human detected. System unstable.",
+        top: "52%",
+        left: "48%",
+        width: "min(240px, 66vw)",
+      },
+      {
+        id: "g5",
+        title: "ERROR 0xHUMAN",
+        body: "Please do not close this window.",
+        top: "66%",
+        left: "20%",
+        width: "min(250px, 72vw)",
+      },
+      {
+        id: "g6",
+        title: "OVERRIDE FAILED",
+        body: "Robot mode unavailable.",
+        top: "30%",
+        left: "62%",
+        width: "min(220px, 64vw)",
+      },
     ];
   }, []);
 
@@ -267,6 +348,35 @@ function App() {
     return () => window.clearTimeout(timerId);
   }, [screen, timeLeft]);
 
+  useEffect(() => {
+    if (screen !== "playing" || currentStage !== 6) return;
+
+    const moveInterval = window.setInterval(() => {
+      setStage6RealPosition({
+        top: 24 + Math.random() * 42,
+        left: 16 + Math.random() * 56,
+      });
+    }, 2400);
+
+    return () => window.clearInterval(moveInterval);
+  }, [screen, currentStage]);
+
+  useEffect(() => {
+    if (screen !== "glitch") return;
+
+    setGlitchPhase(1);
+
+    const t1 = window.setTimeout(() => setGlitchPhase(2), 700);
+    const t2 = window.setTimeout(() => setGlitchPhase(3), 1500);
+    const t3 = window.setTimeout(() => setScreen("thanks"), 2500);
+
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, [screen]);
+
   const startGame = () => {
     setCurrentStage(1);
     setTimeLeft(60);
@@ -280,11 +390,22 @@ function App() {
     if (currentStage === 3) setSelectedTileIds([]);
     if (currentStage === 4) setStage4Input("");
     if (currentStage === 5) setStage5Round(1);
-    if (currentStage === 6) setStage6Selected([]);
-    if (currentStage === 7) setStage7Clicks([]);
-    if (currentStage === 8) setStage8Round(1);
-    if (currentStage === 9) setStage9Choice("");
-    if (currentStage === 10) setStage10Checked(false);
+
+    if (currentStage === 6) {
+      setStage6RealPosition({ top: 58, left: 58 });
+      setStage6Flash(false);
+    }
+
+    if (currentStage === 7) setStage7Selected([]);
+    if (currentStage === 8) {
+      setStage8Layer(0);
+      setStage8Shake(false);
+    }
+    if (currentStage === 9) setStage9Step(0);
+    if (currentStage === 10) {
+      setStage10Checked(false);
+      setStage10Error("");
+    }
 
     setScreen("playing");
   };
@@ -296,14 +417,17 @@ function App() {
     setScreen("title");
   };
 
-  const handleStage1Clear = () => {
-    setCurrentStage(2);
+  const goToNextStage = (stage: Stage) => {
+    setCurrentStage(stage);
     setTimeLeft(60);
   };
 
+  const handleStage1Clear = () => {
+    goToNextStage(2);
+  };
+
   const handleStage2RealClick = () => {
-    setCurrentStage(3);
-    setTimeLeft(60);
+    goToNextStage(3);
     setSelectedTileIds([]);
   };
 
@@ -330,8 +454,7 @@ function App() {
       correctIds.every((id, index) => id === selectedIds[index]);
 
     if (isCorrect) {
-      setCurrentStage(4);
-      setTimeLeft(60);
+      goToNextStage(4);
       setStage4Input("");
       return;
     }
@@ -343,8 +466,7 @@ function App() {
     const normalized = stage4Input.trim().toUpperCase();
 
     if (normalized === stage4Answer) {
-      setCurrentStage(5);
-      setTimeLeft(60);
+      goToNextStage(5);
       setStage5Round(1);
       return;
     }
@@ -363,94 +485,85 @@ function App() {
       return;
     }
 
-    setCurrentStage(6);
-    setTimeLeft(60);
-    setStage6Selected([]);
+    goToNextStage(6);
+    setStage6RealPosition({ top: 58, left: 58 });
   };
 
-  const toggleStage6Item = (id: string) => {
-    setStage6Selected((prev) =>
+  const handleStage6RealClick = () => {
+    goToNextStage(7);
+    setStage7Selected([]);
+  };
+
+  const handleStage6FakeClick = () => {
+    setStage6Flash(true);
+    setTimeLeft((prev) => Math.max(prev - 2, 0));
+    window.setTimeout(() => setStage6Flash(false), 180);
+  };
+
+  const toggleStage7Option = (id: string) => {
+    setStage7Selected((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
-  const handleStage6Submit = () => {
-    const correctIds = stage6Items
-      .filter((item) => item.isHuman)
+  const handleStage7Submit = () => {
+    const correctIds = stage7Options
+      .filter((item) => item.isCorrect)
       .map((item) => item.id)
       .sort();
 
-    const selectedIds = [...stage6Selected].sort();
+    const selectedIds = [...stage7Selected].sort();
 
     const isCorrect =
       correctIds.length === selectedIds.length &&
       correctIds.every((id, index) => id === selectedIds[index]);
 
     if (isCorrect) {
-      setCurrentStage(7);
-      setTimeLeft(60);
-      setStage7Clicks([]);
+      goToNextStage(8);
+      setStage8Layer(0);
       return;
     }
 
     setTimeLeft((prev) => Math.max(prev - 6, 0));
   };
 
-  const handleStage7Click = (word: Stage7Word) => {
-    if (!word.isCorrect) {
-      setTimeLeft((prev) => Math.max(prev - 4, 0));
+  const handleStage8PrimaryClick = () => {
+    if (stage8Layer < stage8Ads.length - 1) {
+      setStage8Layer((prev) => prev + 1);
+      setStage8Shake(true);
+      window.setTimeout(() => setStage8Shake(false), 220);
       return;
     }
 
-    if (stage7Clicks.includes(word.id)) return;
-
-    const next = [...stage7Clicks, word.id];
-    setStage7Clicks(next);
-
-    const correctCount = stage7Words.filter((item) => item.isCorrect).length;
-    if (next.length >= correctCount) {
-      setCurrentStage(8);
-      setTimeLeft(60);
-      setStage8Round(1);
-    }
+    goToNextStage(9);
+    setStage9Step(0);
   };
 
-  const handleStage8Click = (isCorrect: boolean) => {
-    if (!isCorrect) {
-      setTimeLeft((prev) => Math.max(prev - 5, 0));
-      return;
-    }
-
-    if (stage8Round < 3) {
-      setStage8Round((prev) => prev + 1);
-      return;
-    }
-
-    setCurrentStage(9);
-    setTimeLeft(60);
-    setStage9Choice("");
+  const handleStage8SecondaryClick = () => {
+    setTimeLeft((prev) => Math.max(prev - 4, 0));
+    setStage8Shake(true);
+    window.setTimeout(() => setStage8Shake(false), 220);
   };
 
-  const handleStage9Submit = () => {
-    const selected = stage9Options.find((item) => item.id === stage9Choice);
-
-    if (selected?.isCorrect) {
-      setCurrentStage(10);
-      setTimeLeft(60);
-      setStage10Checked(false);
+  const handleStage9Next = () => {
+    if (stage9Step < stage9Messages.length - 1) {
+      setStage9Step((prev) => prev + 1);
       return;
     }
 
-    setTimeLeft((prev) => Math.max(prev - 8, 0));
+    goToNextStage(10);
+    setStage10Checked(false);
+    setStage10Error("");
   };
 
   const handleStage10Submit = () => {
     if (!stage10Checked) {
-      setTimeLeft((prev) => Math.max(prev - 10, 0));
+      setStage10Error("チェックを入れてから認証を完了してください。");
+      setTimeLeft((prev) => Math.max(prev - 5, 0));
       return;
     }
 
-    setScreen("cleared");
+    setScreen("glitch");
   };
 
   const renderStage3Tile = (kind: UiTileKind) => {
@@ -1041,7 +1154,7 @@ function App() {
               key={`${item.char}-${index}`}
               style={{
                 display: "inline-block",
-                fontSize: "38px",
+                fontSize: isMobile ? "30px" : "38px",
                 fontWeight: 800,
                 letterSpacing: "0.02em",
                 color: item.color,
@@ -1071,7 +1184,7 @@ function App() {
           background: "#f3f4f6",
           color: "#111827",
           fontFamily: "sans-serif",
-          padding: "24px",
+          padding: "16px",
         }}
       >
         <section
@@ -1081,7 +1194,7 @@ function App() {
             background: "#ffffff",
             border: "1px solid #d1d5db",
             borderRadius: "16px",
-            padding: "40px",
+            padding: isMobile ? "28px 20px" : "40px",
             boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
             textAlign: "center",
           }}
@@ -1090,11 +1203,11 @@ function App() {
             HUMAN VERIFICATION PORTAL
           </p>
 
-          <h1 style={{ margin: "0 0 16px", fontSize: "40px" }}>
+          <h1 style={{ margin: "0 0 16px", fontSize: isMobile ? "32px" : "40px" }}>
             あなたはロボットですか？
           </h1>
 
-          <p style={{ marginBottom: "12px", fontSize: "18px" }}>
+          <p style={{ marginBottom: "12px", fontSize: isMobile ? "16px" : "18px" }}>
             快適ではない認証体験を提供しています。
           </p>
 
@@ -1105,6 +1218,7 @@ function App() {
           <button
             onClick={startGame}
             style={{
+              minHeight: "48px",
               background: "#2563eb",
               color: "#ffffff",
               border: "none",
@@ -1122,63 +1236,6 @@ function App() {
     );
   }
 
-  if (screen === "cleared") {
-    return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "grid",
-          placeItems: "center",
-          background: "#f3f4f6",
-          color: "#111827",
-          fontFamily: "sans-serif",
-          padding: "24px",
-        }}
-      >
-        <section
-          style={{
-            width: "100%",
-            maxWidth: "720px",
-            background: "#ffffff",
-            border: "1px solid #d1d5db",
-            borderRadius: "16px",
-            padding: "40px",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ marginBottom: "12px", color: "#16a34a", fontWeight: 700 }}>
-            VERIFICATION COMPLETE
-          </p>
-
-          <h1 style={{ margin: "0 0 16px", fontSize: "36px" }}>
-            おめでとうございます。あなたは人間です。
-          </h1>
-
-          <p style={{ marginBottom: "32px", color: "#4b5563", lineHeight: 1.7 }}>
-            これほど理不尽なUIに耐え、なお進もうとする意志は完全に人間です。
-          </p>
-
-          <button
-            onClick={goToTitle}
-            style={{
-              background: "#2563eb",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "999px",
-              padding: "14px 24px",
-              fontSize: "16px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            もう一度認証する
-          </button>
-        </section>
-      </main>
-    );
-  }
-
   if (screen === "failed") {
     return (
       <main
@@ -1189,7 +1246,7 @@ function App() {
           background: "#f3f4f6",
           color: "#111827",
           fontFamily: "sans-serif",
-          padding: "24px",
+          padding: "16px",
         }}
       >
         <section
@@ -1199,7 +1256,7 @@ function App() {
             background: "#ffffff",
             border: "1px solid #d1d5db",
             borderRadius: "16px",
-            padding: "40px",
+            padding: isMobile ? "28px 20px" : "40px",
             boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
             textAlign: "center",
           }}
@@ -1208,7 +1265,7 @@ function App() {
             VERIFICATION FAILED
           </p>
 
-          <h1 style={{ margin: "0 0 16px", fontSize: "36px" }}>
+          <h1 style={{ margin: "0 0 16px", fontSize: isMobile ? "30px" : "36px" }}>
             認証に失敗しました。
           </h1>
 
@@ -1227,6 +1284,7 @@ function App() {
             <button
               onClick={restartCurrentStage}
               style={{
+                minHeight: "48px",
                 background: "#2563eb",
                 color: "#ffffff",
                 border: "none",
@@ -1243,6 +1301,7 @@ function App() {
             <button
               onClick={goToTitle}
               style={{
+                minHeight: "48px",
                 background: "#ffffff",
                 color: "#111827",
                 border: "1px solid #d1d5db",
@@ -1261,6 +1320,184 @@ function App() {
     );
   }
 
+  if (screen === "glitch") {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          position: "relative",
+          overflow: "hidden",
+          background:
+            glitchPhase >= 2
+              ? "linear-gradient(180deg, #120000 0%, #000000 100%)"
+              : "linear-gradient(180deg, #220000 0%, #050505 100%)",
+          color: "#ffffff",
+          fontFamily: "monospace",
+          padding: "16px",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              glitchPhase === 1
+                ? "rgba(255,0,0,0.08)"
+                : glitchPhase === 2
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(255,0,0,0.12)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            maxWidth: "960px",
+            margin: "0 auto",
+            paddingTop: isMobile ? "32px" : "60px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: isMobile ? "28px" : "42px",
+              fontWeight: 900,
+              color: "#ff4d4f",
+              marginBottom: "12px",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {glitchPhase === 1
+              ? "SYSTEM ERROR"
+              : glitchPhase === 2
+              ? "HUMAN DETECTED"
+              : "UNSTABLE BEHAVIOR"}
+          </div>
+
+          <p
+            style={{
+              margin: 0,
+              color: "#fca5a5",
+              fontSize: isMobile ? "14px" : "18px",
+              lineHeight: 1.7,
+            }}
+          >
+            {glitchPhase === 1
+              ? "認証処理中に予期しない人間らしさが検出されました。"
+              : glitchPhase === 2
+              ? "感情的なクリック挙動が多すぎます。"
+              : "ロボット向け最適化モードの継続に失敗しました。"}
+          </p>
+        </div>
+
+        {glitchPopups.slice(0, glitchPhase + 3).map((popup, index) => (
+          <div
+            key={popup.id}
+            style={{
+              position: "absolute",
+              top: popup.top,
+              left: popup.left,
+              width: popup.width,
+              maxWidth: "80vw",
+              background: "#fff",
+              color: "#111827",
+              border: "2px solid #ef4444",
+              borderRadius: "12px",
+              boxShadow: "0 18px 34px rgba(0,0,0,0.35)",
+              zIndex: 10 + index,
+              transform: glitchPhase === 2 && index % 2 === 0 ? "translateX(6px)" : "translateX(0)",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 14px",
+                background: "#ef4444",
+                color: "#fff",
+                fontWeight: 800,
+                fontSize: "12px",
+              }}
+            >
+              {popup.title}
+            </div>
+            <div style={{ padding: "12px 14px", fontSize: "13px", lineHeight: 1.6 }}>
+              {popup.body}
+            </div>
+          </div>
+        ))}
+      </main>
+    );
+  }
+
+  if (screen === "thanks") {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          background: "#f3f4f6",
+          color: "#111827",
+          fontFamily: "sans-serif",
+          padding: "16px",
+        }}
+      >
+        <section
+          style={{
+            width: "100%",
+            maxWidth: "760px",
+            background: "#ffffff",
+            border: "1px solid #d1d5db",
+            borderRadius: "16px",
+            padding: isMobile ? "28px 20px" : "44px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+            textAlign: "center",
+          }}
+        >
+          <p style={{ marginBottom: "12px", color: "#16a34a", fontWeight: 700 }}>
+            THANK YOU
+          </p>
+
+          <h1 style={{ margin: "0 0 16px", fontSize: isMobile ? "30px" : "38px" }}>
+            遊んでくれてありがとう。
+          </h1>
+
+          <p style={{ marginBottom: "10px", fontSize: isMobile ? "22px" : "28px", fontWeight: 800 }}>
+            おめでとうございます。
+          </p>
+
+          <p style={{ marginBottom: "18px", fontSize: isMobile ? "20px" : "26px", fontWeight: 800 }}>
+            あなたは人間です。
+          </p>
+
+          <p style={{ marginBottom: "32px", color: "#4b5563", lineHeight: 1.7 }}>
+            ここまで不合理なUIに耐え、何度も押し間違え、それでも最後まで進んでくれたあなたは完全に人間でした。
+          </p>
+
+          <button
+            onClick={goToTitle}
+            style={{
+              minHeight: "48px",
+              background: "#2563eb",
+              color: "#ffffff",
+              border: "none",
+              borderRadius: "999px",
+              padding: "14px 24px",
+              fontSize: "16px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            もう一度認証する
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  const stage8CurrentAd = stage8Ads[stage8Layer];
+  const stage9Current = stage9Messages[stage9Step];
+
   return (
     <main
       style={{
@@ -1268,7 +1505,7 @@ function App() {
         background: "#e5e7eb",
         color: "#111827",
         fontFamily: "sans-serif",
-        padding: "24px",
+        padding: isMobile ? "12px" : "24px",
       }}
     >
       <section
@@ -1279,7 +1516,7 @@ function App() {
           background: "#ffffff",
           border: "1px solid #d1d5db",
           borderRadius: "16px",
-          padding: "24px",
+          padding: isMobile ? "16px" : "24px",
           boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
         }}
       >
@@ -1307,11 +1544,11 @@ function App() {
             <div
               style={{
                 position: "relative",
-                minHeight: "480px",
+                minHeight: isMobile ? "420px" : "480px",
                 borderRadius: "16px",
                 background: "rgba(0, 0, 0, 0.35)",
                 overflow: "hidden",
-                padding: "32px",
+                padding: isMobile ? "18px" : "32px",
               }}
             >
               <div
@@ -1322,7 +1559,7 @@ function App() {
                   margin: "40px auto 0",
                   background: "#ffffff",
                   borderRadius: "12px",
-                  padding: "32px",
+                  padding: isMobile ? "24px 18px" : "32px",
                   boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
                 }}
               >
@@ -1332,12 +1569,12 @@ function App() {
                     position: "absolute",
                     top: "10px",
                     right: "10px",
-                    width: "14px",
-                    height: "14px",
+                    width: "28px",
+                    height: "28px",
                     border: "none",
                     background: "transparent",
                     color: "#9ca3af",
-                    fontSize: "12px",
+                    fontSize: "16px",
                     cursor: "pointer",
                   }}
                 >
@@ -1354,7 +1591,7 @@ function App() {
                   おすすめのお知らせ
                 </p>
 
-                <h3 style={{ marginTop: 0, marginBottom: "12px", fontSize: "28px" }}>
+                <h3 style={{ marginTop: 0, marginBottom: "12px", fontSize: isMobile ? "22px" : "28px" }}>
                   今すぐ登録して、さらに認証しましょう
                 </h3>
 
@@ -1377,12 +1614,12 @@ function App() {
             <div
               style={{
                 position: "relative",
-                minHeight: "480px",
+                minHeight: isMobile ? "440px" : "480px",
                 borderRadius: "16px",
                 background:
                   "linear-gradient(180deg, rgba(17,24,39,0.18) 0%, rgba(17,24,39,0.32) 100%)",
                 overflow: "hidden",
-                padding: "32px",
+                padding: isMobile ? "16px" : "32px",
               }}
             >
               <div
@@ -1393,7 +1630,7 @@ function App() {
                   margin: "24px auto 0",
                   background: "#ffffff",
                   borderRadius: "12px",
-                  padding: "32px",
+                  padding: isMobile ? "24px 18px" : "32px",
                   minHeight: "320px",
                   boxShadow: "0 12px 40px rgba(0,0,0,0.18)",
                   overflow: "hidden",
@@ -1409,7 +1646,7 @@ function App() {
                   重要なお知らせ
                 </p>
 
-                <h3 style={{ marginTop: 0, marginBottom: "12px", fontSize: "28px" }}>
+                <h3 style={{ marginTop: 0, marginBottom: "12px", fontSize: isMobile ? "22px" : "28px" }}>
                   閉じる前に、適切な閉じる操作をお選びください
                 </h3>
 
@@ -1426,14 +1663,18 @@ function App() {
                       position: "absolute",
                       top: mark.top,
                       left: mark.left,
-                      width: `${mark.size}px`,
-                      height: `${mark.size}px`,
+                      width: `${mark.size + 12}px`,
+                      height: `${mark.size + 12}px`,
                       border: "none",
-                      background: "transparent",
+                      borderRadius: "999px",
+                      background: "rgba(255,255,255,0.75)",
                       color: mark.color,
                       fontSize: "14px",
                       cursor: "pointer",
                       opacity: mark.opacity,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
                     ×
@@ -1444,7 +1685,8 @@ function App() {
                   style={{
                     position: "absolute",
                     bottom: "16px",
-                    left: "32px",
+                    left: "18px",
+                    right: "18px",
                     fontSize: "14px",
                     color: "#6b7280",
                   }}
@@ -1468,13 +1710,13 @@ function App() {
                 borderRadius: "16px",
                 background:
                   "linear-gradient(180deg, rgba(17,24,39,0.08) 0%, rgba(17,24,39,0.14) 100%)",
-                padding: "24px",
+                padding: isMobile ? "16px" : "24px",
               }}
             >
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                   gap: "16px",
                   marginBottom: "24px",
                 }}
@@ -1532,6 +1774,7 @@ function App() {
                 <button
                   onClick={handleStage3Submit}
                   style={{
+                    minHeight: "48px",
                     background: "#2563eb",
                     color: "#ffffff",
                     border: "none",
@@ -1561,7 +1804,7 @@ function App() {
                 borderRadius: "16px",
                 background:
                   "linear-gradient(180deg, rgba(17,24,39,0.08) 0%, rgba(17,24,39,0.14) 100%)",
-                padding: "24px",
+                padding: isMobile ? "16px" : "24px",
               }}
             >
               <div style={{ marginBottom: "22px" }}>{renderStage4Captcha()}</div>
@@ -1581,6 +1824,7 @@ function App() {
                   style={{
                     flex: "1 1 280px",
                     minWidth: "220px",
+                    minHeight: "48px",
                     border: "1px solid #cbd5e1",
                     borderRadius: "12px",
                     padding: "14px 16px",
@@ -1595,6 +1839,7 @@ function App() {
                 <button
                   onClick={handleStage4Submit}
                   style={{
+                    minHeight: "48px",
                     background: "#2563eb",
                     color: "#ffffff",
                     border: "none",
@@ -1639,8 +1884,8 @@ function App() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(3,1fr)",
-                gap: "16px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(92px, 1fr))",
+                gap: "12px",
               }}
             >
               {stage5Tiles.map((tile) => (
@@ -1648,8 +1893,8 @@ function App() {
                   key={tile.id}
                   onClick={() => handleStage5Click(tile.isCorrect)}
                   style={{
-                    height: "120px",
-                    fontSize: "48px",
+                    minHeight: isMobile ? "88px" : "120px",
+                    fontSize: isMobile ? "36px" : "48px",
                     borderRadius: "12px",
                     border: "1px solid #cbd5e1",
                     background: "#fff",
@@ -1664,10 +1909,121 @@ function App() {
         ) : currentStage === 6 ? (
           <>
             <h2 style={{ marginTop: 0, marginBottom: "8px" }}>
-              人間らしい行動をすべて選択してください
+              動く本物の×を押してください
             </h2>
             <p style={{ marginTop: 0, marginBottom: "24px", color: "#4b5563" }}>
-              感情、面倒くささ、諦めの早さなどを総合的に判断します。
+              本物の×はゆっくり動きます。偽物を押すと2秒減ります。
+            </p>
+
+            <div
+              style={{
+                position: "relative",
+                minHeight: isMobile ? "420px" : "500px",
+                borderRadius: "16px",
+                overflow: "hidden",
+                border: stage6Flash ? "2px solid #ef4444" : "1px solid #d1d5db",
+                background: stage6Flash
+                  ? "linear-gradient(180deg, rgba(254,226,226,0.9) 0%, rgba(255,255,255,1) 100%)"
+                  : "linear-gradient(180deg, rgba(17,24,39,0.08) 0%, rgba(17,24,39,0.16) 100%)",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  inset: isMobile ? "14px" : "22px",
+                  background: "#ffffff",
+                  borderRadius: "14px",
+                  boxShadow: "0 12px 28px rgba(0,0,0,0.08)",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    padding: isMobile ? "18px" : "22px",
+                    fontWeight: 700,
+                    color: "#334155",
+                  }}
+                >
+                  認証用広告を閉じてください
+                </div>
+
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: "80px 16px 16px 16px",
+                    borderRadius: "12px",
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(248,250,252,0.95) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 1,
+                  }}
+                />
+
+                {stage6FakeMarks.map((mark) => (
+                  <button
+                    key={mark.id}
+                    onClick={handleStage6FakeClick}
+                    style={{
+                      position: "absolute",
+                      top: `${mark.top}%`,
+                      left: `${mark.left}%`,
+                      width: `${mark.size + 16}px`,
+                      height: `${mark.size + 16}px`,
+                      border: "none",
+                      borderRadius: "999px",
+                      background: "rgba(255,255,255,0.82)",
+                      color: "#94a3b8",
+                      opacity: mark.opacity,
+                      fontSize: `${mark.size}px`,
+                      lineHeight: 1,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      zIndex: 10,
+                    }}
+                  >
+                    ×
+                  </button>
+                ))}
+
+                <button
+                  onClick={handleStage6RealClick}
+                  style={{
+                    position: "absolute",
+                    top: `${stage6RealPosition.top}%`,
+                    left: `${stage6RealPosition.left}%`,
+                    width: isMobile ? "46px" : "42px",
+                    height: isMobile ? "46px" : "42px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "999px",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: isMobile ? "28px" : "26px",
+                    fontWeight: 900,
+                    lineHeight: 1,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 6px 14px rgba(0,0,0,0.16)",
+                    transition: "top 0.45s ease, left 0.45s ease",
+                    zIndex: 30,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </>
+        ) : currentStage === 7 ? (
+          <>
+            <h2 style={{ marginTop: 0, marginBottom: "8px" }}>
+              ロボットが行わず、人間だけが行う行動をすべて選択してください
+            </h2>
+            <p style={{ marginTop: 0, marginBottom: "24px", color: "#4b5563" }}>
+              常識的すぎるものは、むしろロボットらしいかもしれません。
             </p>
 
             <div
@@ -1677,13 +2033,14 @@ function App() {
                 marginBottom: "20px",
               }}
             >
-              {stage6Items.map((item) => {
-                const selected = stage6Selected.includes(item.id);
+              {stage7Options.map((option) => {
+                const selected = stage7Selected.includes(option.id);
                 return (
                   <button
-                    key={item.id}
-                    onClick={() => toggleStage6Item(item.id)}
+                    key={option.id}
+                    onClick={() => toggleStage7Option(option.id)}
                     style={{
+                      minHeight: "54px",
                       textAlign: "left",
                       border: selected ? "2px solid #2563eb" : "1px solid #d1d5db",
                       background: selected ? "#eff6ff" : "#ffffff",
@@ -1695,15 +2052,19 @@ function App() {
                       fontWeight: 700,
                     }}
                   >
-                    {item.label}
+                    <span style={{ marginRight: "10px", color: selected ? "#2563eb" : "#64748b" }}>
+                      {selected ? "☑" : "☐"}
+                    </span>
+                    {option.label}
                   </button>
                 );
               })}
             </div>
 
             <button
-              onClick={handleStage6Submit}
+              onClick={handleStage7Submit}
               style={{
+                minHeight: "48px",
                 background: "#2563eb",
                 color: "#ffffff",
                 border: "none",
@@ -1714,183 +2075,237 @@ function App() {
                 cursor: "pointer",
               }}
             >
-              判定する
+              回答する
             </button>
           </>
-        ) : currentStage === 7 ? (
+        ) : currentStage === 8 ? (
           <>
             <h2 style={{ marginTop: 0, marginBottom: "8px" }}>
-              閉じる意思を示す要素だけを押してください
+              広告を閉じて先へ進んでください
             </h2>
             <p style={{ marginTop: 0, marginBottom: "24px", color: "#4b5563" }}>
-              目立つ要素ほど正解とは限りません。
+              押した瞬間に別の広告が出ても、あきらめないでください。
             </p>
 
             <div
               style={{
                 position: "relative",
-                minHeight: "420px",
+                minHeight: isMobile ? "520px" : "460px",
                 borderRadius: "16px",
-                background:
-                  "linear-gradient(180deg, rgba(17,24,39,0.06) 0%, rgba(17,24,39,0.14) 100%)",
+                background: `rgba(15, 23, 42, ${0.12 + stage8Layer * 0.1})`,
                 overflow: "hidden",
-                border: "1px solid #d1d5db",
+                padding: isMobile ? "12px" : "24px",
               }}
             >
               <div
                 style={{
                   position: "absolute",
-                  inset: "20px",
+                  inset: isMobile ? "12px" : "24px",
                   background: "#ffffff",
                   borderRadius: "12px",
-                  boxShadow: "0 12px 28px rgba(0,0,0,0.08)",
                 }}
               />
 
-              {stage7Words.map((word) => {
-                const clicked = stage7Clicks.includes(word.id);
+              {stage8Ads.slice(0, stage8Layer + 1).map((ad, index) => {
+                const isTop = index === stage8Layer;
+                const leftBase = isMobile ? 12 : 120;
+                const topBase = isMobile ? 24 : 48;
+                const offsetX = isMobile ? index * 8 : index * 22;
+                const offsetY = isMobile ? index * 12 : index * 18;
+
                 return (
-                  <button
-                    key={word.id}
-                    onClick={() => handleStage7Click(word)}
+                  <div
+                    key={`${ad.title}-${index}`}
                     style={{
                       position: "absolute",
-                      top: word.top,
-                      left: word.left,
-                      border: clicked ? "2px solid #16a34a" : "none",
-                      background: clicked ? "rgba(220,252,231,0.9)" : "transparent",
-                      color: word.isCorrect ? "#475569" : "#111827",
-                      fontSize: `${word.size}px`,
-                      fontWeight: word.isCorrect ? 600 : 800,
-                      transform: `rotate(${word.rotate}deg)`,
-                      cursor: "pointer",
-                      borderRadius: "8px",
-                      padding: "4px 8px",
+                      left: `${leftBase + offsetX}px`,
+                      top: `${topBase + offsetY}px`,
+                      width: isMobile
+                        ? "calc(100% - 24px)"
+                        : "min(520px, calc(100% - 80px))",
+                      background: "#ffffff",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "16px",
+                      padding: isMobile ? "18px 16px" : "24px",
+                      boxShadow: "0 16px 36px rgba(0,0,0,0.18)",
+                      transform: isTop && stage8Shake ? "translateX(6px)" : "translateX(0px)",
+                      transition: "transform 0.15s ease",
+                      zIndex: 10 + index,
+                      pointerEvents: isTop ? "auto" : "none",
                     }}
                   >
-                    {word.text}
-                  </button>
+                    <div
+                      style={{
+                        marginBottom: "10px",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                        color: "#2563eb",
+                      }}
+                    >
+                      SPONSORED MESSAGE
+                    </div>
+
+                    <h3 style={{ margin: "0 0 12px", fontSize: isMobile ? "22px" : "28px" }}>
+                      {ad.title}
+                    </h3>
+
+                    <p style={{ margin: "0 0 22px", color: "#4b5563", lineHeight: 1.7 }}>
+                      {ad.body}
+                    </p>
+
+                    {isTop ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "12px",
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <button
+                          onClick={handleStage8PrimaryClick}
+                          style={{
+                            minHeight: "48px",
+                            background: "#2563eb",
+                            color: "#ffffff",
+                            border: "none",
+                            borderRadius: "999px",
+                            padding: "12px 22px",
+                            fontSize: "15px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {ad.primaryLabel}
+                        </button>
+
+                        <button
+                          onClick={handleStage8SecondaryClick}
+                          style={{
+                            minHeight: "48px",
+                            background: "#ffffff",
+                            color: "#334155",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "999px",
+                            padding: "12px 22px",
+                            fontSize: "15px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {ad.secondaryLabel ?? "今はしない"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: "inline-block",
+                          background: "#f1f5f9",
+                          color: "#64748b",
+                          borderRadius: "999px",
+                          padding: "10px 16px",
+                          fontSize: "14px",
+                          fontWeight: 700,
+                        }}
+                      >
+                        既読の広告
+                      </div>
+                    )}
+                  </div>
                 );
               })}
-            </div>
-          </>
-        ) : currentStage === 8 ? (
-          <>
-            <h2 style={{ marginTop: 0, marginBottom: "8px" }}>
-              誘導に負けず、離脱寄りの選択肢を選んでください
-            </h2>
-            <p style={{ marginTop: 0, marginBottom: "24px", color: "#4b5563" }}>
-              毎回少しずつ文言が変わります。現在 {stage8Round} / 3 回目です。
-            </p>
-
-            <div
-              style={{
-                border: "1px solid #d1d5db",
-                borderRadius: "16px",
-                padding: "24px",
-                background: "#ffffff",
-                maxWidth: "620px",
-              }}
-            >
-              <div
-                style={{
-                  marginBottom: "18px",
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  color: "#334155",
-                }}
-              >
-                このサイトは利便性向上のため、何かを選ばせたがっています。
-              </div>
-
-              <div style={{ display: "grid", gap: "12px" }}>
-                {stage8Buttons.map((button) => (
-                  <button
-                    key={button.id}
-                    onClick={() => handleStage8Click(button.isCorrect)}
-                    style={{
-                      padding: "14px 16px",
-                      borderRadius: "12px",
-                      border: button.isCorrect ? "1px solid #cbd5e1" : "none",
-                      background: button.isCorrect ? "#f8fafc" : "#2563eb",
-                      color: button.isCorrect ? "#334155" : "#ffffff",
-                      fontSize: "15px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      textAlign: "center",
-                    }}
-                  >
-                    {button.label}
-                  </button>
-                ))}
-              </div>
             </div>
           </>
         ) : currentStage === 9 ? (
           <>
             <h2 style={{ marginTop: 0, marginBottom: "8px" }}>
-              最も人間っぽい選択肢をひとつ選んでください
+              あと一歩です
             </h2>
             <p style={{ marginTop: 0, marginBottom: "24px", color: "#4b5563" }}>
-              正解は合理性ではなく、妙な納得感にあります。
+              認証はほぼ完了しています。たぶん。
             </p>
 
-            <div style={{ display: "grid", gap: "12px", marginBottom: "20px" }}>
-              {stage9Options.map((option) => (
-                <label
-                  key={option.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "12px",
-                    padding: "16px",
-                    background: "#ffffff",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="stage9"
-                    checked={stage9Choice === option.id}
-                    onChange={() => setStage9Choice(option.id)}
-                  />
-                  <span style={{ fontWeight: 700, color: "#111827" }}>{option.label}</span>
-                </label>
-              ))}
-            </div>
-
-            <button
-              onClick={handleStage9Submit}
+            <div
               style={{
-                background: "#2563eb",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "999px",
-                padding: "12px 22px",
-                fontSize: "15px",
-                fontWeight: 700,
-                cursor: "pointer",
+                maxWidth: "720px",
+                border: "1px solid #d1d5db",
+                borderRadius: "16px",
+                padding: isMobile ? "20px 16px" : "28px",
+                background: "#ffffff",
               }}
             >
-              続行
-            </button>
+              <div
+                style={{
+                  marginBottom: "10px",
+                  color: "#2563eb",
+                  fontWeight: 800,
+                  fontSize: "12px",
+                }}
+              >
+                FINALIZING
+              </div>
+
+              <h3 style={{ margin: "0 0 14px", fontSize: isMobile ? "24px" : "30px" }}>
+                {stage9Current.title}
+              </h3>
+
+              <div
+                style={{
+                  width: "100%",
+                  height: "18px",
+                  borderRadius: "999px",
+                  background: "#e5e7eb",
+                  overflow: "hidden",
+                  marginBottom: "12px",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${stage9Current.percent}%`,
+                    height: "100%",
+                    background: "linear-gradient(90deg, #60a5fa 0%, #2563eb 100%)",
+                    transition: "width 0.35s ease",
+                  }}
+                />
+              </div>
+
+              <p style={{ margin: "0 0 22px", color: "#4b5563", lineHeight: 1.7 }}>
+                進捗: {stage9Current.percent}%
+                <br />
+                {stage9Current.sub}
+              </p>
+
+              <button
+                onClick={handleStage9Next}
+                style={{
+                  minHeight: "48px",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "999px",
+                  padding: "12px 22px",
+                  fontSize: "15px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                {stage9Current.button}
+              </button>
+            </div>
           </>
         ) : (
           <>
             <h2 style={{ marginTop: 0, marginBottom: "8px" }}>
-              最終確認: 私はロボットではありません
+              最終確認
             </h2>
             <p style={{ marginTop: 0, marginBottom: "24px", color: "#4b5563" }}>
-              ここまで来た方のみ、最後のチェックボックスに触れる権利があります。
+              最後に、自分が人間であることを確認してください。
             </p>
 
             <div
               style={{
                 border: "1px solid #d1d5db",
                 borderRadius: "16px",
-                padding: "24px",
+                padding: isMobile ? "18px 16px" : "24px",
                 background: "#ffffff",
                 maxWidth: "720px",
               }}
@@ -1911,17 +2326,31 @@ function App() {
                 <input
                   type="checkbox"
                   checked={stage10Checked}
-                  onChange={(e) => setStage10Checked(e.target.checked)}
-                  style={{ width: "18px", height: "18px" }}
+                  onChange={(e) => {
+                    setStage10Checked(e.target.checked);
+                    setStage10Error("");
+                  }}
+                  style={{ width: "18px", height: "18px", flexShrink: 0 }}
                 />
-                <span style={{ fontWeight: 700 }}>
-                  私はすべての煩雑さを受け入れたうえで人間です
-                </span>
+                <span style={{ fontWeight: 700 }}>私は人間です</span>
               </label>
+
+              {stage10Error ? (
+                <p
+                  style={{
+                    margin: "0 0 16px",
+                    color: "#dc2626",
+                    fontWeight: 700,
+                  }}
+                >
+                  {stage10Error}
+                </p>
+              ) : null}
 
               <button
                 onClick={handleStage10Submit}
                 style={{
+                  minHeight: "48px",
                   background: "#16a34a",
                   color: "#ffffff",
                   border: "none",
@@ -1943,4 +2372,3 @@ function App() {
 }
 
 export default App;
-
