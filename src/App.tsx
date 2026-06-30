@@ -1969,18 +1969,18 @@ function App() {
                       left: `${mark.left}%`,
                       width: `${mark.size + 16}px`,
                       height: `${mark.size + 16}px`,
-                      border: "none",
+                      border: "1px solid #d1d5db",
                       borderRadius: "999px",
-                      background: "rgba(255,255,255,0.82)",
-                      color: "#94a3b8",
-                      opacity: mark.opacity,
+                      background: "#ffffff",
+                      color: "#111827",
+                      opacity: 1,
                       fontSize: `${mark.size}px`,
                       lineHeight: 1,
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      boxShadow: "0 6px 14px rgba(0,0,0,0.16)",
                       zIndex: 10,
                     }}
                   >
@@ -2008,7 +2008,7 @@ function App() {
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: "0 6px 14px rgba(0,0,0,0.16)",
-                    transition: "top 0.45s ease, left 0.45s ease",
+                    transition: "top 0.2s ease, left 0.2s ease",
                     zIndex: 30,
                   }}
                 >
