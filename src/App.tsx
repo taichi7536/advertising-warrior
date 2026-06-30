@@ -356,7 +356,7 @@ function App() {
         top: 24 + Math.random() * 42,
         left: 16 + Math.random() * 56,
       });
-    }, 2400);
+    }, 800);
 
     return () => window.clearInterval(moveInterval);
   }, [screen, currentStage]);
