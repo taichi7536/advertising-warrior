@@ -1495,7 +1495,7 @@ function App() {
     );
   }
 
-  const stage8CurrentAd = stage8Ads[stage8Layer];
+
   const stage9Current = stage9Messages[stage9Step];
 
   return (
