@@ -2008,7 +2008,7 @@ function App() {
                     alignItems: "center",
                     justifyContent: "center",
                     boxShadow: "0 6px 14px rgba(0,0,0,0.16)",
-                    transition: "top 0.2s ease, left 0.2s ease",
+                    transition: "top 0.06s ease, left 0.06s ease",
                     zIndex: 30,
                   }}
                 >
